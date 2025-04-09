@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Snake 80s Arcade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: black;
+      color: lime;
+      font-family: 'Press Start 2P', cursive;
+      margin: 0;
+      text-align: center;
+    }
+    .intro, .game-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+    .visible {
+      display: flex;
+    }
+    input {
+      background: black;
+      color: lime;
+      border: 2px solid lime;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding: 10px;
+      font-size: 14px;
+      width: 250px;
+      margin-bottom: 10px;
+    }
+    button {
+      background: black;
+      color: lime;
+      border: 2px solid lime;
+      font-family: 'Press Start 2P', cursive;
+      padding: 8px 16px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    canvas {
+      border: 4px solid lime;
+      box-shadow: 0 0 20px lime;
+      background: black;
+      margin-top: 20px;
+    }
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 400px;
+      margin: 10px auto;
+      font-size: 16px;
+    }
+    #gameOverText {
+      font-size: 24px;
+      margin-top: 20px;
+      color: red;
+      display: none;
+    }
+    .leaderboard ol {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    .leaderboard li {
+      margin: 4px 0;
+    }
+    .mobile-controls {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .mobile-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="intro visible" id="introScreen">
+    <h1>SNAKE 80s ARCADE</h1>
+    <input type="text" id="playerName" placeholder="INSERISCI IL TUO NOME" maxlength="12">
+    <div>
+      <button onclick="startGame()">START</button>
+      <button onclick="clearLeaderboard()">CLEAR</button>
+    </div>
+    <div class="leaderboard">
+      <h2>TOP 10</h2>
+      <ol id="leaderboardList"></ol>
+    </div>
+  </div>
+
+  <div class="game-screen" id="gameScreen">
+    <div class="info-bar">
+      <div id="scoreDisplay">SCORE: 0</div>
+      <div id="highScoreDisplay">HIGH: 0</div>
+    </div>
+    <canvas id="game" width="400" height="400"></canvas>
+    <div>
+      <button onclick="startGame()">START</button>
+      <button onclick="pauseGame()">STOP</button>
+      <button onclick="goHome()">HOME</button>
+      <button id="playAgainButton" onclick="playAgain()" style="display:none;">PLAY AGAIN</button>
+    </div>
+    <div class="mobile-controls">
+      <div><button onclick="changeDirection('Up')">⬆</button></div>
+      <div>
+        <button onclick="changeDirection('Left')">⬅</button>
+        <button onclick="changeDirection('Down')">⬇</button>
+        <button onclick="changeDirection('Right')">➡</button>
+      </div>
+    </div>
+    <div id="gameOverText">GAME OVER</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const introScreen = document.getElementById("introScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const highScoreDisplay = document.getElementById("highScoreDisplay");
+    const playAgainButton = document.getElementById("playAgainButton");
+    const playerNameInput = document.getElementById("playerName");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const gameOverText = document.getElementById("gameOverText");
+
+    const scale = 20;
+    const rows = canvas.height / scale;
+    const columns = canvas.width / scale;
+
+    let snake, fruit;
+    let score = 0;
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    let gameLoop = null;
+    let paused = false;
+    let playing = false;
+    let playerName = "";
+
+    function updateLeaderboardUI() {
+      leaderboardList.innerHTML = "";
+      leaderboard.slice(0, 10).forEach((entry, index) => {
+        const li = document.createElement("li");
+        let trophy = index === 0 ? " 🥇" : index === 1 ? " 🥈" : index === 2 ? " 🥉" : "";
+        li.textContent = `${index + 1}° ${entry.name}: ${entry.score}${trophy}`;
+        leaderboardList.appendChild(li);
+      });
+      if (leaderboard.length > 0) {
+        highScoreDisplay.innerText = `HIGH: ${leaderboard[0].score} (${leaderboard[0].name})`;
+      } else {
+        highScoreDisplay.innerText = "HIGH: 0";
+      }
+    }
+
+    function startGame() {
+      if (paused) {
+        resumeGame();
+        return;
+      }
+      playerName = playerNameInput.value.trim();
+      if (!playerName) {
+        alert("Inserisci il tuo nome prima di iniziare!");
+        return;
+      }
+      introScreen.classList.remove("visible");
+      introScreen.style.display = "none";
+      gameScreen.style.display = "block";
+      setup();
+    }
+
+    function setup() {
+      clearInterval(gameLoop);
+      snake = new Snake();
+      fruit = new Fruit();
+      fruit.pickLocation();
+      score = 0;
+      scoreDisplay.innerText = "SCORE: 0";
+      gameOverText.style.display = "none";
+      playAgainButton.style.display = "none";
+      paused = false;
+      playing = true;
+      runGame();
+    }
+
+    function runGame() {
+      gameLoop = setInterval(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        fruit.draw();
+        snake.update();
+        snake.draw();
+
+        if (snake.eat(fruit)) {
+          fruit.pickLocation();
+          score++;
+          scoreDisplay.innerText = "SCORE: " + score;
+        }
+
+        if (snake.checkCollision()) {
+          clearInterval(gameLoop);
+          gameOver();
+        }
+      }, 150);
+    }
+
+    function pauseGame() {
+      if (gameLoop) {
+        clearInterval(gameLoop);
+        gameLoop = null;
+        paused = true;
+      }
+    }
+
+    function resumeGame() {
+      runGame();
+    }
+
+    function goHome() {
+      clearInterval(gameLoop);
+      paused = false;
+      playing = false;
+      gameScreen.style.display = "none";
+      introScreen.style.display = "flex";
+    }
+
+    function playAgain() {
+      setup();
+    }
+
+    function clearLeaderboard() {
+      leaderboard = [];
+      localStorage.removeItem("leaderboard");
+      updateLeaderboardUI();
+    }
+
+    function gameOver() {
+      playing = false;
+      const index = leaderboard.findIndex(e => e.name === playerName);
+      if (index !== -1) {
+        if (score > leaderboard[index].score) {
+          leaderboard[index].score = score;
+        }
+      } else {
+        leaderboard.push({ name: playerName, score });
+      }
+      leaderboard.sort((a, b) => b.score - a.score);
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      updateLeaderboardUI();
+      gameOverText.style.display = "block";
+      playAgainButton.style.display = "inline-block";
+    }
+
+    function changeDirection(dir) {
+      if (snake && playing) {
+        snake.changeDirection(dir);
+      }
+    }
+
+    window.addEventListener("keydown", e => {
+      const dir = e.key.replace("Arrow", "");
+      changeDirection(dir);
+    });
+
+    function Snake() {
+      this.x = 0;
+      this.y = 0;
+      this.xSpeed = scale;
+      this.ySpeed = 0;
+      this.total = 0;
+      this.tail = [];
+
+      this.draw = function () {
+        ctx.fillStyle = "lime";
+        this.tail.forEach(t => ctx.fillRect(t.x, t.y, scale, scale));
+        ctx.fillRect(this.x, this.y, scale, scale);
+      };
+
+      this.update = function () {
+        for (let i = 0; i < this.tail.length - 1; i++) {
+          this.tail[i] = this.tail[i + 1];
+        }
+        if (this.total > 0) {
+          this.tail[this.total - 1] = { x: this.x, y: this.y };
+        }
+        this.x += this.xSpeed;
+        this.y += this.ySpeed;
+
+        if (this.x >= canvas.width) this.x = 0;
+        if (this.y >= canvas.height) this.y = 0;
+        if (this.x < 0) this.x = canvas.width - scale;
+        if (this.y < 0) this.y = canvas.height - scale;
+      };
+
+      this.changeDirection = function (dir) {
+        const opposite = {
+          Up: "Down",
+          Down: "Up",
+          Left: "Right",
+          Right: "Left",
+        };
+        const current = this.xSpeed === 0 ? (this.ySpeed < 0 ? "Up" : "Down") : (this.xSpeed < 0 ? "Left" : "Right");
+        if (dir !== opposite[current]) {
+          switch (dir) {
+            case "Up": this.xSpeed = 0; this.ySpeed = -scale; break;
+            case "Down": this.xSpeed = 0; this.ySpeed = scale; break;
+            case "Left": this.xSpeed = -scale; this.ySpeed = 0; break;
+            case "Right": this.xSpeed = scale; this.ySpeed = 0; break;
+          }
+        }
+      };
+
+      this.eat = function (fruit) {
+        if (this.x === fruit.x && this.y === fruit.y) {
+          this.total++;
+          return true;
+        }
+        return false;
+      };
+
+      this.checkCollision = function () {
+        return this.tail.some(t => this.x === t.x && this.y === t.y);
+      };
+    }
+
+    function Fruit() {
+      this.x;
+      this.y;
+      this.color;
+
+      this.pickLocation = function () {
+        this.x = Math.floor(Math.random() * columns) * scale;
+        this.y = Math.floor(Math.random() * rows) * scale;
+        const colors = ["red", "yellow", "blue", "orange", "white"];
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+      };
+
+      this.draw = function () {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, scale, scale);
+      };
+    }
+
+    updateLeaderboardUI();
+  </script>
+</body>
+</html>
