@@ -1,93 +1,160 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Snake 80s Arcade</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     body {
+      margin: 0;
       background: black;
       color: lime;
       font-family: 'Press Start 2P', cursive;
-      margin: 0;
-      text-align: center;
-    }
-    .intro, .game-screen {
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
     }
-    .visible {
+
+    .intro, .game-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 40px;
+    }
+
+    .intro.active, .game-container.active {
       display: flex;
     }
+
     input {
       background: black;
       color: lime;
       border: 2px solid lime;
-      font-family: 'Press Start 2P', cursive;
-      text-align: center;
       padding: 10px;
-      font-size: 14px;
-      width: 250px;
-      margin-bottom: 10px;
+      text-align: center;
+      width: 280px;
+      font-size: 12px;
+      font-family: 'Press Start 2P', cursive;
+      margin-bottom: 15px;
     }
-    button {
+
+    .buttons button {
       background: black;
       color: lime;
       border: 2px solid lime;
+      margin: 10px;
+      padding: 10px 18px;
       font-family: 'Press Start 2P', cursive;
-      padding: 8px 16px;
-      margin: 5px;
-      font-size: 14px;
       cursor: pointer;
+      font-size: 12px;
     }
-    canvas {
-      border: 4px solid lime;
-      box-shadow: 0 0 20px lime;
-      background: black;
-      margin-top: 20px;
-    }
+
     .info-bar {
       display: flex;
       justify-content: space-between;
-      width: 400px;
-      margin: 10px auto;
-      font-size: 16px;
+      width: 420px;
+      margin: 20px 0;
+      font-size: 14px;
     }
-    #gameOverText {
-      font-size: 24px;
-      margin-top: 20px;
-      color: red;
-      display: none;
+
+    canvas {
+      image-rendering: pixelated;
+      border: 4px solid lime;
+      box-shadow: 0 0 20px lime;
+      background: black;
     }
+
+    .leaderboard {
+      margin-top: 30px;
+      text-align: center;
+    }
+
     .leaderboard ol {
       list-style: none;
       padding: 0;
-      text-align: left;
     }
+
     .leaderboard li {
       margin: 4px 0;
+      text-align: left;
     }
-    .mobile-controls {
+
+    .leaderboard li::before {
+      content: "";
+    }
+
+    .leaderboard li:nth-child(1)::before { content: "1° "; }
+    .leaderboard li:nth-child(2)::before { content: "2° "; }
+    .leaderboard li:nth-child(3)::before { content: "3° "; }
+
+    .leaderboard li:nth-child(1)::after { content: " 🥇"; }
+    .leaderboard li:nth-child(2)::after { content: " 🥈"; }
+    .leaderboard li:nth-child(3)::after { content: " 🥉"; }
+
+    #gameOverText {
+      font-size: 24px;
+      margin-top: 20px;
+      color: lime;
       display: none;
     }
+
+    #flashMessage {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: black;
+      color: lime;
+      border: 2px solid lime;
+      padding: 10px 15px;
+      font-size: 12px;
+      font-family: 'Press Start 2P', cursive;
+      text-shadow: 0 0 8px lime;
+      display: none;
+      animation: fadeOut 3s forwards;
+      z-index: 200;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+
+    .mobile-controls {
+      display: none;
+      flex-direction: column;
+      margin-top: 20px;
+    }
+
+    .mobile-controls .row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .mobile-controls button {
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+      color: lime;
+      background: black;
+      border: 2px solid lime;
+      box-shadow: 0 0 10px lime;
+    }
+
     @media (max-width: 768px) {
       .mobile-controls {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 10px;
       }
     }
   </style>
 </head>
 <body>
-
-  <div class="intro visible" id="introScreen">
+  <div class="intro active" id="introScreen">
     <h1>SNAKE 80s ARCADE</h1>
-    <input type="text" id="playerName" placeholder="INSERISCI IL TUO NOME" maxlength="12">
-    <div>
+    <input type="text" id="playerName" placeholder="ENTER YOUR NAME" maxlength="12">
+    <div class="buttons">
       <button onclick="startGame()">START</button>
       <button onclick="clearLeaderboard()">CLEAR</button>
     </div>
@@ -97,87 +164,67 @@
     </div>
   </div>
 
-  <div class="game-screen" id="gameScreen">
+  <div class="game-container" id="gameScreen">
     <div class="info-bar">
       <div id="scoreDisplay">SCORE: 0</div>
       <div id="highScoreDisplay">HIGH: 0</div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
-    <div>
-      <button onclick="startGame()">START</button>
+    <div id="gameOverText">GAME OVER</div>
+    <div id="flashMessage"></div>
+    <div class="buttons">
+      <button onclick="resumeGame()">START</button>
       <button onclick="pauseGame()">STOP</button>
       <button onclick="goHome()">HOME</button>
-      <button id="playAgainButton" onclick="playAgain()" style="display:none;">PLAY AGAIN</button>
+      <button onclick="playAgain()" id="playAgainButton" style="display:none;">PLAY AGAIN</button>
     </div>
+
     <div class="mobile-controls">
-      <div><button onclick="changeDirection('Up')">⬆</button></div>
-      <div>
-        <button onclick="changeDirection('Left')">⬅</button>
-        <button onclick="changeDirection('Down')">⬇</button>
-        <button onclick="changeDirection('Right')">➡</button>
+      <div class="row"><button onclick="changeDirection('Up')">⬆️</button></div>
+      <div class="row">
+        <button onclick="changeDirection('Left')">⬅️</button>
+        <button onclick="changeDirection('Down')">⬇️</button>
+        <button onclick="changeDirection('Right')">➡️</button>
       </div>
     </div>
-    <div id="gameOverText">GAME OVER</div>
   </div>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
-
-    const introScreen = document.getElementById("introScreen");
-    const gameScreen = document.getElementById("gameScreen");
-    const scoreDisplay = document.getElementById("scoreDisplay");
-    const highScoreDisplay = document.getElementById("highScoreDisplay");
-    const playAgainButton = document.getElementById("playAgainButton");
-    const playerNameInput = document.getElementById("playerName");
-    const leaderboardList = document.getElementById("leaderboardList");
-    const gameOverText = document.getElementById("gameOverText");
-
     const scale = 20;
     const rows = canvas.height / scale;
     const columns = canvas.width / scale;
 
     let snake, fruit;
     let score = 0;
-    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
     let gameLoop = null;
     let paused = false;
     let playing = false;
     let playerName = "";
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 
-    function updateLeaderboardUI() {
-      leaderboardList.innerHTML = "";
-      leaderboard.slice(0, 10).forEach((entry, index) => {
-        const li = document.createElement("li");
-        let trophy = index === 0 ? " 🥇" : index === 1 ? " 🥈" : index === 2 ? " 🥉" : "";
-        li.textContent = `${index + 1}° ${entry.name}: ${entry.score}${trophy}`;
-        leaderboardList.appendChild(li);
-      });
-      if (leaderboard.length > 0) {
-        highScoreDisplay.innerText = `HIGH: ${leaderboard[0].score} (${leaderboard[0].name})`;
-      } else {
-        highScoreDisplay.innerText = "HIGH: 0";
-      }
-    }
+    const introScreen = document.getElementById("introScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const playerNameInput = document.getElementById("playerName");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const highScoreDisplay = document.getElementById("highScoreDisplay");
+    const gameOverText = document.getElementById("gameOverText");
+    const playAgainButton = document.getElementById("playAgainButton");
 
     function startGame() {
-      if (paused) {
-        resumeGame();
-        return;
-      }
       playerName = playerNameInput.value.trim();
       if (!playerName) {
-        alert("Inserisci il tuo nome prima di iniziare!");
+        alert("Please enter your name!");
         return;
       }
-      introScreen.classList.remove("visible");
-      introScreen.style.display = "none";
-      gameScreen.style.display = "block";
+      introScreen.classList.remove("active");
+      gameScreen.classList.add("active");
       setup();
     }
 
     function setup() {
-      clearInterval(gameLoop);
       snake = new Snake();
       fruit = new Fruit();
       fruit.pickLocation();
@@ -185,12 +232,13 @@
       scoreDisplay.innerText = "SCORE: 0";
       gameOverText.style.display = "none";
       playAgainButton.style.display = "none";
-      paused = false;
       playing = true;
+      paused = false;
       runGame();
     }
 
     function runGame() {
+      clearInterval(gameLoop);
       gameLoop = setInterval(() => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         fruit.draw();
@@ -211,44 +259,35 @@
     }
 
     function pauseGame() {
-      if (gameLoop) {
-        clearInterval(gameLoop);
-        gameLoop = null;
-        paused = true;
-      }
+      clearInterval(gameLoop);
+      paused = true;
     }
 
     function resumeGame() {
-      runGame();
+      if (paused && playing) {
+        runGame();
+        paused = false;
+      }
     }
 
     function goHome() {
       clearInterval(gameLoop);
-      paused = false;
+      gameScreen.classList.remove("active");
+      introScreen.classList.add("active");
       playing = false;
-      gameScreen.style.display = "none";
-      introScreen.style.display = "flex";
-    }
-
-    function playAgain() {
-      setup();
-    }
-
-    function clearLeaderboard() {
-      leaderboard = [];
-      localStorage.removeItem("leaderboard");
-      updateLeaderboardUI();
     }
 
     function gameOver() {
       playing = false;
-      const index = leaderboard.findIndex(e => e.name === playerName);
-      if (index !== -1) {
-        if (score > leaderboard[index].score) {
-          leaderboard[index].score = score;
+      const existingIndex = leaderboard.findIndex(e => e.name === playerName);
+      if (existingIndex !== -1) {
+        if (score > leaderboard[existingIndex].score) {
+          leaderboard[existingIndex].score = score;
+          showFlashMessage("🎉 New personal record!");
         }
       } else {
         leaderboard.push({ name: playerName, score });
+        showFlashMessage("🎉 Welcome to the leaderboard!");
       }
       leaderboard.sort((a, b) => b.score - a.score);
       localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
@@ -257,8 +296,40 @@
       playAgainButton.style.display = "inline-block";
     }
 
+    function playAgain() {
+      setup();
+    }
+
+    function updateLeaderboardUI() {
+      leaderboardList.innerHTML = "";
+      leaderboard.slice(0, 10).forEach((entry, index) => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name}: ${entry.score}`;
+        leaderboardList.appendChild(li);
+      });
+      if (leaderboard.length > 0) {
+        highScoreDisplay.innerText = `HIGH: ${leaderboard[0].score} (${leaderboard[0].name})`;
+      } else {
+        highScoreDisplay.innerText = "HIGH: 0";
+      }
+    }
+
+    function clearLeaderboard() {
+      leaderboard = [];
+      localStorage.removeItem("leaderboard");
+      updateLeaderboardUI();
+    }
+
+    function showFlashMessage(message) {
+      const flash = document.getElementById("flashMessage");
+      flash.innerText = message;
+      flash.style.display = "block";
+      flash.style.animation = "fadeOut 3s forwards";
+      setTimeout(() => flash.style.display = "none", 3000);
+    }
+
     function changeDirection(dir) {
-      if (snake && playing) {
+      if (snake && typeof snake.changeDirection === 'function') {
         snake.changeDirection(dir);
       }
     }
@@ -276,19 +347,20 @@
       this.total = 0;
       this.tail = [];
 
-      this.draw = function () {
+      this.draw = () => {
         ctx.fillStyle = "lime";
         this.tail.forEach(t => ctx.fillRect(t.x, t.y, scale, scale));
         ctx.fillRect(this.x, this.y, scale, scale);
       };
 
-      this.update = function () {
+      this.update = () => {
         for (let i = 0; i < this.tail.length - 1; i++) {
           this.tail[i] = this.tail[i + 1];
         }
         if (this.total > 0) {
           this.tail[this.total - 1] = { x: this.x, y: this.y };
         }
+
         this.x += this.xSpeed;
         this.y += this.ySpeed;
 
@@ -298,13 +370,8 @@
         if (this.y < 0) this.y = canvas.height - scale;
       };
 
-      this.changeDirection = function (dir) {
-        const opposite = {
-          Up: "Down",
-          Down: "Up",
-          Left: "Right",
-          Right: "Left",
-        };
+      this.changeDirection = dir => {
+        const opposite = { Up: "Down", Down: "Up", Left: "Right", Right: "Left" };
         const current = this.xSpeed === 0 ? (this.ySpeed < 0 ? "Up" : "Down") : (this.xSpeed < 0 ? "Left" : "Right");
         if (dir !== opposite[current]) {
           switch (dir) {
@@ -316,7 +383,7 @@
         }
       };
 
-      this.eat = function (fruit) {
+      this.eat = fruit => {
         if (this.x === fruit.x && this.y === fruit.y) {
           this.total++;
           return true;
@@ -324,25 +391,20 @@
         return false;
       };
 
-      this.checkCollision = function () {
+      this.checkCollision = () => {
         return this.tail.some(t => this.x === t.x && this.y === t.y);
       };
     }
 
     function Fruit() {
-      this.x;
-      this.y;
-      this.color;
-
-      this.pickLocation = function () {
+      this.x = 0;
+      this.y = 0;
+      this.pickLocation = () => {
         this.x = Math.floor(Math.random() * columns) * scale;
         this.y = Math.floor(Math.random() * rows) * scale;
-        const colors = ["red", "yellow", "blue", "orange", "white"];
-        this.color = colors[Math.floor(Math.random() * colors.length)];
       };
-
-      this.draw = function () {
-        ctx.fillStyle = this.color;
+      this.draw = () => {
+        ctx.fillStyle = "red";
         ctx.fillRect(this.x, this.y, scale, scale);
       };
     }
