@@ -99,26 +99,19 @@
     }
 
     #flashMessage {
-      position: absolute;
-      top: 20%;
+      position: fixed;
+      top: 30%;
       left: 50%;
       transform: translate(-50%, -50%);
       background: black;
       color: lime;
       border: 2px solid lime;
-      padding: 10px 15px;
-      font-size: 12px;
+      padding: 15px 20px;
+      font-size: 14px;
       font-family: 'Press Start 2P', cursive;
       text-shadow: 0 0 8px lime;
       display: none;
-      animation: fadeOut 3s forwards;
       z-index: 200;
-    }
-
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; display: none; }
     }
 
     .mobile-controls {
@@ -211,6 +204,7 @@
     const scoreDisplay = document.getElementById("scoreDisplay");
     const highScoreDisplay = document.getElementById("highScoreDisplay");
     const gameOverText = document.getElementById("gameOverText");
+    const flashMessage = document.getElementById("flashMessage");
     const playAgainButton = document.getElementById("playAgainButton");
 
     function startGame() {
@@ -231,6 +225,7 @@
       score = 0;
       scoreDisplay.innerText = "SCORE: 0";
       gameOverText.style.display = "none";
+      flashMessage.style.display = "none";
       playAgainButton.style.display = "none";
       playing = true;
       paused = false;
@@ -321,11 +316,11 @@
     }
 
     function showFlashMessage(message) {
-      const flash = document.getElementById("flashMessage");
-      flash.innerText = message;
-      flash.style.display = "block";
-      flash.style.animation = "fadeOut 3s forwards";
-      setTimeout(() => flash.style.display = "none", 3000);
+      flashMessage.innerText = message;
+      flashMessage.style.display = "block";
+      setTimeout(() => {
+        flashMessage.style.display = "none";
+      }, 3000);
     }
 
     function changeDirection(dir) {
